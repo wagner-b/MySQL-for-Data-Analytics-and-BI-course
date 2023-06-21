@@ -855,3 +855,124 @@ FROM
 ORDER BY employeeID;
 -- Visualize the emp_managers table
 SELECT * FROM emp_manager;
+
+-- self join - Combines rows of a table with other rows
+-- of the same table. All rows come from the same table.
+-- Using aliases is obligatory. The filtering the data
+-- can be done both in the join, or one in the
+-- WHERE clause, and the other in the join.
+-- E.g. from emp_manager, extract only the managers.
+SELECT DISTINCT
+    e1.*
+FROM
+    emp_manager e1
+        JOIN
+    emp_manager e2 ON e1.emp_no = e2.manager_no;
+-- Instead of select distinct, we can filter on WHERE clause
+SELECT 
+    e1.*
+FROM
+    emp_manager e1
+        JOIN
+    emp_manager e2 ON e1.emp_no = e2.manager_no
+WHERE
+    e2.emp_no IN (SELECT 
+            manager_no
+        FROM
+            emp_manager);
+
+-- SQL view is a virtual table whose contents are
+-- obtained from an existing table(s), called base
+-- table(s). The view object doesn't contain real
+-- data, it simply shows data from the base table.
+-- E.g. visualize last contract of each employee
+CREATE OR REPLACE VIEW v_dept_emp_latest_date AS
+    SELECT 
+        emp_no, MAX(from_date) AS from_date, MAX(to_date) AS to_date
+    FROM
+        dept_emp
+    GROUP BY emp_no;
+-- To visualize it, click the last icon on SCHEMAS-employees-
+-- Views-v_dept_emp_lastest_date or type:
+SELECT * FROM employees.v_dept_emp_latest_date;
+
+-- A view acts like a shorcut for writing the same SELECT
+-- statement every time. Saves a lot of coding time,
+-- occupies no extra memory, and acts like a dynamic table,
+-- since it instantly reflect the changes in the base table.
+
+-- Views exercise: Create a view that will extract the
+-- average salary of all managers registered in the database.
+-- Round this value to the nearest cent.
+CREATE OR REPLACE VIEW v_manager_avg_salary AS
+    SELECT 
+        ROUND(AVG(salary), 2) AS average_salary
+    FROM
+        salaries s
+            JOIN
+        dept_manager dm ON s.emp_no = dm.emp_no;
+-- Visualize the result
+SELECT * FROM v_manager_avg_salary;
+
+-- Stored routines
+-- Routine is a usual, fixed action, or series of action,
+-- repeated periodically. Stored routines are SQL statement(s)
+-- that can be stored in a DB server, and invoked by users.
+-- Stored routines can be stored procedures or functions.
+
+-- It is important to define a delimiter for the routine
+-- other than the semi-colon, otherwise only the first query
+-- of the routine will be executed when called.
+
+-- Exercise: create a stored procedure to see the average
+-- salary of all employees. The call the procedure.
+USE employees;
+DROP PROCEDURE IF EXISTS avg_salary_all_emp;
+DELIMITER $$
+USE employees$$
+CREATE PROCEDURE avg_salary_all_emp()
+BEGIN
+	SELECT AVG(salary) AS avg_salary FROM salaries;
+END$$
+DELIMITER ;
+-- Call the procedure
+CALL employees.avg_salary_all_emp();
+
+-- Procedures with input and output parameters:
+-- Requires the SELECT - INTO structure.
+-- Create a procedure to store the average salary
+-- of an employee, based on a given employee number
+USE employees;
+DROP PROCEDURE IF EXISTS emp_avg_salary_out;
+DELIMITER $$
+CREATE PROCEDURE emp_avg_salary_out(IN p_emp_no INT, OUT p_avg_salary DECIMAL(10,2))
+BEGIN
+SELECT
+    ROUND(AVG(s.salary), 2)
+INTO p_avg_salary FROM
+    employees e
+        JOIN
+    salaries s ON e.emp_no = s.emp_no
+WHERE
+    e.emp_no = p_emp_no;
+END$$
+DELIMITER ;
+
+-- Exercise: Create a procedure called ‘emp_info’ that
+-- uses as parameters the first and the last name of an
+-- individual, and returns their employee number.
+USE employees;
+DROP PROCEDURE IF EXISTS emp_info;
+DELIMITER $$
+CREATE PROCEDURE emp_info(IN p_first_name VARCHAR(14), IN p_last_name VARCHAR(16), OUT p_emp_no INT)
+BEGIN
+SELECT 
+    MAX(emp_no)
+INTO p_emp_no FROM
+    employees
+WHERE
+    first_name = p_first_name
+        AND last_name = p_last_name;
+END$$
+DELIMITER ;
+
