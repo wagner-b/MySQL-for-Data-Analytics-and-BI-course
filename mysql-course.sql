@@ -218,6 +218,8 @@ FROM
 ORDER BY salary DESC
 LIMIT 10;
 
+-- The DELETE statement, added here to avoid errors
+DELETE FROM employees WHERE emp_no = 999901;
 -- The INSERT statement
 INSERT INTO employees (
     emp_no, birth_date, first_name, last_name, gender, hire_date
@@ -229,6 +231,7 @@ VALUES (
 -- The column names can be ommited in the INSERT statement,
 -- as long as you add all values for all columns, and in the
 -- same order in which they appear in the table.
+DELETE FROM employees WHERE emp_no = 999903;
 INSERT INTO employees VALUES (
     999903, '1977-04-14', 'Johnathan', 'Creek', 'M', '1999-01-01'
 );
@@ -238,6 +241,7 @@ SELECT * FROM employees ORDER BY emp_no DESC LIMIT 10;
 -- It's possible to insert data from a table into another table
 -- But data types must match, and satisfy the same constraints!
 -- First let's create a new table
+DROP TABLE IF EXISTS departments_dup;
 CREATE TABLE departments_dup (
     dept_no CHAR(4) NOT NULL,
     dept_name VARCHAR(40) NOT NULL
@@ -268,12 +272,14 @@ SELECT * FROM employees WHERE emp_no = 999901;
 -- COMMIT, DELETE and ROLLBACK statements
 -- Again, the WHERE clause is crucial for DELETE,
 -- otherwise all data will be deleted.
--- Toggle off autocommit mode in MySQL Workbench before running
-COMMIT;
-SELECT * FROM employees WHERE emp_no = 999903;
-DELETE FROM employees WHERE emp_no = 999903;
-SELECT * FROM employees WHERE emp_no = 999903;
-ROLLBACK;
+-- Toggle off autocommit mode in MySQL Workbench before running,
+-- otherwise, it may lead to errors. The code below is commented
+-- to avoid errors when running all queries of this file
+#COMMIT;
+#SELECT * FROM employees WHERE emp_no = 999903;
+#DELETE FROM employees WHERE emp_no = 999903;
+#SELECT * FROM employees WHERE emp_no = 999903;
+#ROLLBACK;
 SELECT * FROM employees WHERE emp_no = 999903;
 
 -- The DROP statement deletes all records, sctructure,
@@ -311,11 +317,17 @@ ALTER TABLE departments_dup
 CHANGE COLUMN dept_no dept_no CHAR(4) NULL;
 ALTER TABLE departments_dup
 CHANGE COLUMN dept_name dept_name VARCHAR(40) NULL;
--- Then, insert 'Public Relations' dept
+
+-- Let's insert the 'Public Relations' department name
+-- Here, I will always add a DELETE statement before each
+--  INSERT, to achieve consistency in the DB when running
+-- this entire file more than once with autocommit enabled.
+DELETE FROM departments_dup WHERE dept_name = 'Public Relations';
 INSERT INTO departments_dup (dept_name) VALUES('Public Relations');
 -- Delete dept number 2
 DELETE FROM departments_dup WHERE dept_no = 'd002';
 -- And add dept 10 and 11
+DELETE FROM departments_dup WHERE dept_no = 'd010' OR dept_no = 'd011';
 INSERT INTO departments_dup (dept_no) VALUES ('d010'), ('d011');
 -- Visualize departments_dup
 SELECT * FROM departments_dup ORDER BY dept_no;
@@ -1102,4 +1114,14 @@ FROM
     employees
 WHERE
     emp_no = @v_emp_no;
+
+-- The variables created previously where either session
+-- variables (created with SET @) or local variables
+-- (created with DECLARE). Global variables are specific,
+-- pre-defined system variables, like '.max_connections()'
+-- or '.max_join_size()'. Use 'SET GLOBAL' or 'SET @@global.'
+-- to set these types of variables. E.g.
+SET GLOBAL max_connections = 1000;
+SET @@global.max_connections = 800;
+SELECT @@global.max_connections;
 
