@@ -976,3 +976,130 @@ WHERE
 END$$
 DELIMITER ;
 
+-- Variable names are preceded by the @ symbol.
+-- Use the syntax 'SET' to initialize a variable
+SET @v_avg_salary = 0;
+-- Call the procedure
+CALL employees.emp_avg_salary_out(11300, @v_avg_salary);
+-- Display the output value in the variable
+SELECT @v_avg_salary;
+
+-- Exercise: Create a variable, called ‘v_emp_no’, where
+-- you will store the output of the procedure you created
+-- in the last exercise. Call the same procedure, inserting
+-- the values ‘Aruna’ and ‘Journel’ as a first and last name
+-- respectively. Finally, select the obtained output. 
+SET @v_emp_no = 0;
+CALL employees.emp_info('Aruna', 'Journel', @v_emp_no);
+SELECT @v_emp_no;
+
+-- User-defined functions
+-- There are no OUT parameters, all parameters are inputs,
+-- so there is no need to type the keyword IN. But it must
+-- always return one value, using the RETURN statement.
+-- Use the DECLARE statement to define a varible 
+-- inside the scope of the function.
+USE employees;
+DROP FUNCTION IF EXISTS f_emp_avg_salary;
+DELIMITER $$
+CREATE FUNCTION f_emp_avg_salary(p_emp_no INT) RETURNS DECIMAL(10, 2)
+READS SQL DATA
+BEGIN
+DECLARE v_avg_salary DECIMAL(10, 2);
+
+SELECT
+    AVG(s.salary)
+INTO v_avg_salary FROM
+	employees e
+        JOIN
+	salaries s ON e.emp_no = s.emp_no
+WHERE
+    e.emp_no = p_emp_no;
+
+RETURN v_avg_salary;
+END$$
+DELIMITER ;
+/*
+Because binary logs may be enabled by default, it may be
+necessary to add the keywords DETERMINISTIC or NO SQL or
+READS SQL DATA to avoid error code 1418. This is because
+When binary logs are enabled, it will always check
+whether a function is changing the data in the
+database and what is the result to be produced.
+
+Meanings of these keywords: 
+DETERMINISTIC – it states that the function will
+always return identical result given the same input.
+NO SQL – means that the code in our function
+does not contain SQL (rarely the case).
+READS SQL DATA – this is usually when a simple SELECT
+statement is present.
+
+When none of those are present in our code, MySQL
+assumes that our function is non-deterministic
+and that it changes data. This is why error code
+1418 is raised in the absence of these keywords.
+*/
+-- Use the SELECT statement to see the function return value
+SELECT f_emp_avg_salary(11300);
+
+-- Functions exercise: Create a function called ‘f_emp_info’
+-- that takes for parameters the first and last name of an
+-- employee, and returns the salary from the newest
+-- contract of that employee.
+USE employees;
+DROP FUNCTION IF EXISTS f_emp_info;
+DELIMITER $$
+CREATE FUNCTION f_emp_info(p_first_name VARCHAR(14), p_last_name VARCHAR(16)) RETURNS DECIMAL(10, 2)
+READS SQL DATA
+BEGIN
+DECLARE v_salary DECIMAL(10, 2);
+DECLARE v_max_from_date DATE;
+
+SELECT 
+    MAX(s.from_date)
+INTO v_max_from_date FROM
+    employees e
+        JOIN
+    salaries s ON e.emp_no = s.emp_no
+WHERE
+    e.first_name = p_first_name
+        AND e.last_name = p_last_name;
+
+SELECT 
+    s.salary
+INTO v_salary FROM
+    employees e
+        JOIN
+    salaries s ON e.emp_no = s.emp_no
+WHERE
+    e.first_name = p_first_name
+        AND e.last_name = p_last_name
+        AND s.from_date = v_max_from_date;
+
+RETURN v_salary;
+END$$
+DELIMITER ;
+-- View the output for 'Georgi Facello' 
+SELECT f_emp_info('Georgi', 'Facello');
+-- View the output for 'Aruna Journel'
+SELECT f_emp_info('Aruna', 'Journel');
+
+-- To update, insert or delete values in a table,
+-- it is advised to use stored procedures and not
+-- functions, as functions need to return a value.
+
+-- While including a procedure in a SELECT statement
+-- is impossible, a function can be easily included
+-- as a column of a SELECT statement. For example:
+SET @v_emp_no = 11300;
+SELECT 
+    emp_no,
+    first_name,
+    last_name,
+    F_EMP_AVG_SALARY(@v_emp_no) AS avg_salary
+FROM
+    employees
+WHERE
+    emp_no = @v_emp_no;
+
