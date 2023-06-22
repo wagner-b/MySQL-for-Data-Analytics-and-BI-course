@@ -1125,3 +1125,121 @@ SET GLOBAL max_connections = 1000;
 SET @@global.max_connections = 800;
 SELECT @@global.max_connections;
 
+-- Triggers: a trigger is a MySQL object that can “trigger” a
+-- specific action or calculation ‘before’ or ‘after’ an INSERT, 
+-- UPDATE, or DELETE statement has been executed. A trigger can
+-- be activated before a new record is inserted into a table,
+-- or after a record has been updated.
+USE employees;
+DROP TRIGGER IF EXISTS before_salaries_insert;
+DELIMITER $$
+CREATE TRIGGER before_salaries_insert
+BEFORE INSERT ON salaries
+FOR EACH ROW
+BEGIN
+    IF NEW.salary < 0 THEN
+        SET NEW.salary = 0;
+    END IF;
+END$$
+DELIMITER ;
+
+SELECT * FROM salaries WHERE emp_no = 10001;
+-- Insert a new record with negative salary
+DELETE FROM salaries WHERE salary = 0;
+INSERT INTO salaries VALUES ('10001', -92891, '2010-06-22', '9999-01-01');
+-- See that the new record has a salary of 0, not -92891
+SELECT * FROM salaries WHERE emp_no = 10001;
+
+-- Before update trigger
+USE employees;
+DROP TRIGGER IF EXISTS before_salaries_update;
+DELIMITER $$
+CREATE TRIGGER before_salaries_update
+BEFORE UPDATE ON salaries
+FOR EACH ROW
+BEGIN
+    IF NEW.salary < 0 THEN
+	    SET NEW.salary = OLD.salary;
+	END IF;
+END$$
+DELIMITER ;
+
+-- Update the salary of emp_no 10001 on 2010-06-22
+UPDATE salaries 
+SET 
+    salary = - 50000
+WHERE
+    emp_no = 10001
+        AND from_date = '2010-06-22';
+-- See that the salary on that row wasn't updated
+SELECT * FROM salaries WHERE emp_no = 10001 AND from_date = '2010-06-22';
+-- Delete the value we inserted earlier
+DELETE FROM salaries WHERE salary = 0;
+
+-- Some system built-in functions
+-- sysdate() returns datetime when it's invoked
+SELECT SYSDATE();
+SELECT DATE_FORMAT(SYSDATE(), '%y-%m-%d') AS today;
+
+-- MySQL Indexes are used to increase the search speed
+-- related to a table. Need to specify the column name(s).
+-- The syntax is:
+# CREATE INDEX i_index_name ON table_name(column1, column2, ...);
+
+
+-- Creating and dropping indexes isn't supported with
+-- 'IF EXISTS' statements, therefore we need procedures.
+-- Procedure to create an index only if it doesn't exist:
+DELIMITER $$
+DROP PROCEDURE IF EXISTS csi_add_index $$
+CREATE PROCEDURE csi_add_index(in theTable varchar(128), in theIndexName varchar(128), in theIndexColumns varchar(128)  )
+BEGIN
+ IF((SELECT COUNT(*) AS index_exists FROM information_schema.statistics WHERE TABLE_SCHEMA = DATABASE() and table_name =
+theTable AND index_name = theIndexName)  = 0) THEN
+   SET @s = CONCAT('CREATE INDEX ' , theIndexName , ' ON ' , theTable, '(', theIndexColumns, ')');
+   PREPARE stmt FROM @s;
+   EXECUTE stmt;
+ END IF;
+END $$
+DELIMITER ;
+
+-- Procedure to drop an index only if exists:
+DELIMITER $$
+DROP PROCEDURE IF EXISTS drop_index_if_exists $$
+CREATE PROCEDURE drop_index_if_exists(in theTable varchar(128), in theIndexName varchar(128) )
+BEGIN
+ IF((SELECT COUNT(*) AS index_exists FROM information_schema.statistics WHERE TABLE_SCHEMA = DATABASE() and table_name =
+theTable AND index_name = theIndexName) > 0) THEN
+   SET @s = CONCAT('DROP INDEX ' , theIndexName , ' ON ' , theTable);
+   PREPARE stmt FROM @s;
+   EXECUTE stmt;
+ END IF;
+END $$
+DELIMITER ;
+
+-- Searching becomes a lot faster after the index is created
+CALL drop_index_if_exists('employees', 'i_hire_date');
+SELECT * FROM employees WHERE hire_date > '2000-01-01';
+CALL csi_add_index('employees', 'i_hire_date', 'hire_date');
+SELECT * FROM employees WHERE hire_date > '2000-01-01';
+
+-- Indexes can also be applied for multiple columns, called
+-- composite indexes. The csi_add_index also supports it
+CALL drop_index_if_exists('employees', 'i_composite');
+SELECT * FROM employees WHERE first_name = 'Georgi' AND last_name = 'Facello';
+CALL csi_add_index('employees', 'i_composite', 'first_name, last_name');
+SELECT * FROM employees WHERE first_name = 'Georgi' AND last_name = 'Facello';
+
+-- Primary and unique keys are also indexes. Indexes
+-- can be seen via the GUI in MySQL Workbench, or:
+SHOW INDEX FROM employees FROM employees;
+
+-- Index exercise 1 - Drop i_hire_date index
+CALL drop_index_if_exists('employees', 'i_hire_date');
+-- Index exercise 2 - Create/test index for salary in salaries
+CALL drop_index_if_exists('salaries', 'i_salary');
+SELECT * FROM salaries WHERE salary > 89000;
+CALL csi_add_index('salaries', 'i_salary', 'salary');
+SELECT * FROM salaries WHERE salary > 89000;
+CALL drop_index_if_exists('salaries', 'i_salary');
+
