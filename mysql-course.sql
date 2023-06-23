@@ -1243,3 +1243,117 @@ CALL csi_add_index('salaries', 'i_salary', 'salary');
 SELECT * FROM salaries WHERE salary > 89000;
 CALL drop_index_if_exists('salaries', 'i_salary');
 
+-- The CASE statement - used in a SELECT statement
+SELECT 
+    emp_no,
+    first_name,
+    last_name,
+    CASE
+        WHEN gender = 'M' THEN 'Male'
+        ELSE 'Female'
+    END AS gender
+FROM
+    employees;
+-- Alternatively:
+SELECT 
+    emp_no,
+    first_name,
+    last_name,
+    CASE gender
+        WHEN 'M' THEN 'Male'
+        ELSE 'Female'
+    END AS gender
+FROM
+    employees;
+
+-- The above alternative is not always possible, though.
+SELECT 
+    e.emp_no,
+    e.first_name,
+    e.last_name,
+    CASE
+        WHEN dm.emp_no IS NOT NULL THEN 'Manager'
+        ELSE 'Employee'
+    END AS is_manager
+FROM
+    employees e
+        LEFT JOIN
+    dept_manager dm ON dm.emp_no = e.emp_no
+WHERE
+    e.emp_no > 109990;
+-- In this case, putting dm.emp_no right after CASE instead of 
+-- WHEN (and erasing IS), will generate an incorrect output
+-- with all rows 'Employee' on the is_manager column.
+
+-- IF(expression_to_evaluate, value_if_true, value_if_false)
+SELECT 
+    emp_no,
+    first_name,
+    last_name,
+    IF(gender = 'M', 'Male', 'Female') AS gender
+FROM
+    employees;
+
+-- CASE statement exercise: Extract a dataset containing the
+-- following information about the managers: employee number,
+-- first name, and last name. Add two columns at the end, one
+-- showing the difference between the maximum and minimum
+-- salary of that employee, and another one saying whether
+-- this salary raise was higher than $30,000 or NOT.
+SELECT 
+    dm.emp_no,
+    e.first_name,
+    e.last_name,
+    MAX(s.salary) - MIN(s.salary) AS salary_increase,
+    CASE
+        WHEN MAX(s.salary) - MIN(s.salary) > 30000 THEN 'Yes'
+        ELSE 'No'
+    END AS s_increase_over_30000
+FROM
+    employees e
+        JOIN
+    dept_manager dm ON e.emp_no = dm.emp_no
+        JOIN
+    salaries s ON dm.emp_no = s.emp_no
+GROUP BY dm.emp_no , e.first_name , e.last_name
+ORDER BY dm.emp_no;
+-- Using IF() instead of CASE
+SELECT 
+    dm.emp_no,
+    e.first_name,
+    e.last_name,
+    MAX(s.salary) - MIN(s.salary) AS salary_increase,
+    IF(MAX(s.salary) - MIN(s.salary) > 30000,
+        'Yes',
+        'No') AS s_increase_over_30000
+FROM
+    employees e
+        JOIN
+    dept_manager dm ON e.emp_no = dm.emp_no
+        JOIN
+    salaries s ON dm.emp_no = s.emp_no
+GROUP BY dm.emp_no , e.first_name , e.last_name
+ORDER BY dm.emp_no;
+
+-- CASE statement exercise 2: Extract the employee number,
+-- first name, and last name of the first 100 employees,
+-- and add a fourth column, called “current_employee”
+-- saying “Is still employed” if the employee is still
+-- working in the company, or “Not an employee anymore”
+-- if they aren’t.
+SELECT 
+    e.emp_no,
+    e.first_name,
+    e.last_name,
+    CASE
+        WHEN MAX(de.to_date) > SYSDATE() THEN 'Is still employed'
+        ELSE 'Not an employee anymore'
+    END AS current_employee
+FROM
+    employees e
+        JOIN
+    dept_emp de ON e.emp_no = de.emp_no
+GROUP BY e.emp_no , e.first_name , e.last_name
+ORDER BY e.emp_no
+LIMIT 100;
+
