@@ -1357,3 +1357,75 @@ GROUP BY e.emp_no , e.first_name , e.last_name
 ORDER BY e.emp_no
 LIMIT 100;
 
+-- MySQL Window functions - performs calculations for
+-- every record in the dataset (current row). There
+-- are aggregate window functions and nonaggregate
+-- window function (divided in ranking and value
+-- window functions).
+
+-- The ROW_NUMBER() ranking window function
+-- Empty OVER clause = all query rows will be evaluated
+-- That means all rows are like a single partition
+SELECT 
+    ROW_NUMBER() OVER () AS row_num,
+    emp_no,
+    salary
+FROM
+    salaries
+LIMIT 1100;
+
+-- 'PARTITION BY' will divide the data in partitions,
+-- and the evaluation will be done separately for each
+-- partition. In the example below, the row_num increases
+-- for each row with same emp_no, but will reset to 1 when
+-- a new emp_no appears in the table (a new partition).
+SELECT 
+    ROW_NUMBER() OVER (PARTITION BY emp_no ORDER BY salary) AS row_num,
+    emp_no,
+    salary
+FROM
+    salaries
+LIMIT 1100;
+
+-- PARTITION BY is not mandatory, we can use only ORDER BY
+SELECT 
+    ROW_NUMBER() OVER (ORDER BY salary DESC) AS row_num,
+    emp_no,
+    salary
+FROM
+    salaries
+LIMIT 1100;
+
+-- Window functions alternative syntax - involves
+-- naming the window specification - useful when it's
+-- necessary to refer to it multiple times
+SELECT 
+    ROW_NUMBER() OVER w AS row_num,
+    emp_no,
+    salary
+FROM
+    salaries
+WINDOW w AS (PARTITION BY emp_no ORDER BY salary DESC)
+LIMIT 1100;
+
+-- RANK() and DENSE_RANK() window functions
+-- They assign the same rank to records that hold
+-- identical values. RANK() focuses on the number
+-- of values in the output, incrementing to the next
+-- rank the number of identical values. DENSE_RANK()
+-- focuses on the ranking itself and only increments
+-- the next rank by 1, regardless of identical values.
+SELECT
+    emp_no, salary, RANK() OVER w AS rank_num
+FROM
+    salaries
+WHERE emp_no = 11839
+WINDOW w AS (PARTITION BY emp_no ORDER BY salary DESC);
+
+SELECT
+    emp_no, salary, DENSE_RANK() OVER w AS rank_num
+FROM
+    salaries
+WHERE emp_no = 11839
+WINDOW w AS (PARTITION BY emp_no ORDER BY salary DESC);
+
