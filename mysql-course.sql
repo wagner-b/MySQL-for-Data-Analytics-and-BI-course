@@ -1532,3 +1532,51 @@ FROM
         CROSS JOIN
     cte_avg_salary cte1;
 
+-- Temporary tables
+-- They only exist during the current session.
+-- But they can be very useful, since they can
+-- be used like any other table from the default
+-- database during the session it was created.
+CREATE TEMPORARY TABLE f_highest_salaries
+SELECT 
+    s.emp_no, MAX(s.salary) AS f_highest_salary
+FROM
+    salaries s
+        JOIN
+    employees e ON e.emp_no = s.emp_no AND e.gender = 'F'
+GROUP BY s.emp_no;
+-- Select new temporary table
+SELECT * FROM f_highest_salaries;
+-- They can also be dropped like any other table
+# DROP TABLE IF EXISTS f_highest_salaries;
+-- Adding the TEMPORARY keyword also works
+DROP TEMPORARY TABLE IF EXISTS f_highest_salaries;
+
+-- After a temporary table is used once, it's locked-for-use,
+-- meaning it can't be used on self-joins, or with UNION or
+-- UNION ALL. But there is a workaround this, we can create
+-- a CTE and copy the code of the temp table inside the CTE.
+CREATE TEMPORARY TABLE f_highest_salaries
+SELECT 
+    s.emp_no, MAX(s.salary) AS f_highest_salary
+FROM
+    salaries s
+        JOIN
+    employees e ON e.emp_no = s.emp_no AND e.gender = 'F'
+GROUP BY s.emp_no
+LIMIT 10;
+
+WITH cte AS (
+    SELECT
+        s.emp_no, MAX(s.salary) AS f_highest_salary
+    FROM
+        salaries s
+            JOIN
+        employees e ON e.emp_no = s.emp_no AND e.gender = 'F'
+    GROUP BY s.emp_no
+    LIMIT 10
+)
+SELECT * FROM f_highest_salaries UNION ALL SELECT * FROM cte;
+
+DROP TEMPORARY TABLE IF EXISTS f_highest_salaries;
+
