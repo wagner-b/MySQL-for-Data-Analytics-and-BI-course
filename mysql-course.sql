@@ -1483,3 +1483,52 @@ WINDOW w AS (PARTITION BY d.dept_name)
 ORDER BY s.emp_no
 LIMIT 1000;
 
+-- Common Table Expressions (CTEs)
+-- Used to obtain temporary result dataset that are
+-- produced within the execution of a query / subquery.
+-- Sometimes referred as 'named subqueries'.
+-- Starts with 'WITH' clause, then the name of the CTE.
+-- e.g. how many female salaries are above all-time
+-- average salary?
+WITH cte AS (SELECT AVG(salary) AS avg_salary FROM salaries)
+SELECT
+    SUM(CASE WHEN s.salary > c.avg_salary THEN 1 ELSE 0 END)
+    AS no_of_fem_salaries_above_avg,
+    COUNT(s.salary) AS total_no_of_fem_salary_contracts
+FROM
+    salaries s
+        JOIN
+    employees e ON s.emp_no = e.emp_no AND e.gender = 'F' 
+        CROSS JOIN
+    cte c;
+
+-- CTEs can have multiple subclauses
+-- In MySQL we can't use 2 or more WITH clauses on the
+-- same level (same query). But we can use a comma to add
+-- other CTEs after the first one (CTE subclauses).
+-- e.g. how many female highest salaries are above all-time
+-- average salary across all genders?
+WITH cte_avg_salary AS (
+    SELECT AVG(salary) AS avg_salary FROM salaries
+),
+cte_f_highest_salary AS (
+    SELECT s.emp_no, MAX(s.salary) AS f_highest_salary
+    FROM salaries s
+        JOIN
+    employees e ON e.emp_no = s.emp_no AND e.gender = 'F'
+    GROUP BY s.emp_no
+)
+SELECT 
+    SUM(CASE WHEN cte2.f_highest_salary > cte1.avg_salary
+        THEN 1 ELSE 0 END) AS f_highest_salaries_above_avg,
+    COUNT(e.emp_no) AS total_no_of_female_contracts,
+    (SUM(CASE WHEN cte2.f_highest_salary > cte1.avg_salary
+        THEN 1 ELSE 0 END) / COUNT(e.emp_no)) * 100
+        AS percentage
+FROM
+    employees e
+        JOIN
+    cte_f_highest_salary cte2 ON cte2.emp_no = e.emp_no
+        CROSS JOIN
+    cte_avg_salary cte1;
+
