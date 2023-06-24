@@ -1429,3 +1429,57 @@ FROM
 WHERE emp_no = 11839
 WINDOW w AS (PARTITION BY emp_no ORDER BY salary DESC);
 
+-- LAG() and LEAD() value window functions
+-- They return a value that can be found in the database
+-- LAG() returns the previous value from a column
+-- LEAD() returns the next value from a column
+SELECT 
+    emp_no,
+    salary,
+    LAG(salary) OVER w AS previous_salary,
+    LEAD(salary) OVER w AS next_salary,
+    salary - LAG(salary) OVER w AS diff_salary_curr_prev,
+    LEAD(salary) OVER w - salary AS diff_salary_next_curr
+FROM salaries
+WHERE emp_no = 10001
+WINDOW w AS (ORDER BY salary);
+
+-- The MySQL LAG() and LEAD() value window functions can have
+-- a second argument, designating how many rows/steps back
+-- (for LAG()) or forth (for LEAD()) we'd like to refer to
+-- with respect to a given record.
+SELECT 
+    emp_no,
+    salary,
+    LAG(salary) OVER w AS previous_salary,
+    LAG(salary, 2) OVER w AS previous_previous_salary,
+    LEAD(salary) OVER w AS next_salary,
+    LEAD(salary, 2) OVER w AS next_next_salary
+FROM
+    salaries
+WINDOW w AS (PARTITION BY emp_no ORDER BY salary)
+LIMIT 1000;
+
+-- Aggregate window functions
+-- They are aggregate functions like MAX() MIN() AVG() SUM()
+-- but applied to the context of window functions. Must use
+-- PARTITION BY, and must be careful to obtain meaningful
+-- results. It doesn't reduce the number of records returned.
+-- E.g. select emp salary and average salary per department
+-- for employees which are still working on the company.
+SELECT 
+    s.emp_no, d.dept_name, s.salary,
+    ROUND(AVG(s.salary) OVER w) AS avg_salary_per_dept
+FROM
+    salaries s
+        JOIN
+    dept_emp de ON s.emp_no = de.emp_no
+        JOIN
+    departments d ON de.dept_no = d.dept_no
+WHERE
+    s.to_date > SYSDATE() AND de.to_date > SYSDATE()
+GROUP BY s.emp_no , d.dept_name , s.salary
+WINDOW w AS (PARTITION BY d.dept_name)
+ORDER BY s.emp_no
+LIMIT 1000;
+
