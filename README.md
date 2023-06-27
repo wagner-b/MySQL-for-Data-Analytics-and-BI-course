@@ -4,6 +4,7 @@ the lessons and exercises of the course
 "SQL - MySQL for Data Analytics and Business Intelligence". My certificate
 of completion of said course can also be found in this repository. 
 <br>
+<br>
 I take no credit for the `employees.sql` and `employees_mod.sql` files 
 (see license notice at the beginning of these files). 
 They are shared here because they are used to generate the `employees` and 
@@ -11,6 +12,7 @@ They are shared here because they are used to generate the `employees` and
 (to do so, simply open them in MySQL and run all queries). 
 Having these databases locally is required in order to run the code 
 lessons / exercises in the other files.
+<br>
 <br>
 The code in this repository is available under the 
 Creative Commons Attribution-Share Alike 3.0 Unported License. 
