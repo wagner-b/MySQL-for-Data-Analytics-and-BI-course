@@ -54,3 +54,52 @@ FROM
         JOIN
     t_employees e2 ON dm.emp_no = e2.emp_no
 ORDER BY dm.emp_no , e.calendar_year;
+
+-- Compare the average salary of female versus male employees
+-- in the entire company until year 2002, and add a filter
+-- allowing you to see that per each department.
+SELECT 
+    d.dept_name,
+    e.gender,
+    YEAR(s.from_date) AS calendar_year,
+    ROUND(AVG(s.salary), 2) AS avg_salary
+FROM
+    t_employees e
+        JOIN
+    t_salaries s ON e.emp_no = s.emp_no
+        JOIN
+    t_dept_emp de ON e.emp_no = de.emp_no
+        JOIN
+    t_departments d ON de.dept_no = d.dept_no
+GROUP BY d.dept_name , e.gender , calendar_year
+HAVING calendar_year <= 2002
+ORDER BY dept_name , calendar_year;
+
+-- Create an SQL stored procedure that will allow you to obtain
+-- the average male and female salary per department within a
+-- certain salary range. Let this range be defined by two values
+-- the user can insert when calling the procedure.
+USE employees_mod;
+DROP PROCEDURE IF EXISTS avg_m_f_salary_dept;
+DELIMITER $$
+CREATE PROCEDURE avg_m_f_salary_dept(IN p_min_salary FLOAT, IN p_max_salary FLOAT)
+BEGIN
+SELECT 
+    d.dept_name, e.gender, ROUND(AVG(s.salary), 2) AS avg_salary
+FROM
+    t_employees e
+        JOIN
+    t_salaries s ON e.emp_no = s.emp_no
+        JOIN
+    t_dept_emp de ON e.emp_no = de.emp_no
+        JOIN
+    t_departments d ON de.dept_no = d.dept_no
+WHERE
+    s.salary BETWEEN p_min_salary AND p_max_salary
+GROUP BY d.dept_name , e.gender
+ORDER BY d.dept_name;
+END$$
+DELIMITER ;
+
+-- Call the procedure
+CALL avg_m_f_salary_dept(50000, 90000);
